@@ -1,0 +1,4 @@
+<resources>
+    <font id="MonoFont" filename="fonts/MonoFont.fnt"/>
+    <font id="MonoFontLargeNum" filename="fonts/MonoFontLargeNum.fnt" filter="0123456789:"/>
+</resources>
