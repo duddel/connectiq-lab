@@ -12,8 +12,14 @@ class Face1View extends WatchUi.WatchFace {
 
     // Anchors are hard-coded for round watch face with 390x390 pixels
     // Icons are drawn above anchor, Text below anchor
-    const DataOrder = [ "hr", "bb", "steps", "sun" ];
-    const DataAnchors = [[115, 92], [195, 67], [275, 92], [195, 305]];
+    const DataOrder = [ "hr", "bb", "steps", null, "sunrise", "sunset" ];
+    const DataAnchors = [
+        [115, 92],
+        [195, 67],
+        [275, 92],
+        [195, 305], // Single Data Icon with long text
+        [125, 275],
+        [265, 275]];
     const LowBatAnchor = [195, 265];
     const DayTextAnchor = [195, 128];
 
@@ -35,7 +41,9 @@ class Face1View extends WatchUi.WatchFace {
         "hr" => null as BitmapResource,
         "bb" => null as BitmapResource,
         "steps" => null as BitmapResource,
-        "sun" => null as BitmapResource,
+        // "sun" => null as BitmapResource,
+        "sunrise" => null as BitmapResource,
+        "sunset" => null as BitmapResource,
         "lowbat" => null as BitmapResource};
 
     function initialize() {
@@ -47,7 +55,9 @@ class Face1View extends WatchUi.WatchFace {
         Icons["hr"] = Application.loadResource( Rez.Drawables.icon_hr ) as BitmapResource;
         Icons["bb"] = Application.loadResource( Rez.Drawables.icon_bb ) as BitmapResource;
         Icons["steps"] = Application.loadResource( Rez.Drawables.icon_steps ) as BitmapResource;
-        Icons["sun"] = Application.loadResource( Rez.Drawables.icon_sun ) as BitmapResource;
+        // Icons["sun"] = Application.loadResource( Rez.Drawables.icon_sun ) as BitmapResource;
+        Icons["sunrise"] = Application.loadResource( Rez.Drawables.icon_sunrise ) as BitmapResource;
+        Icons["sunset"] = Application.loadResource( Rez.Drawables.icon_sunset ) as BitmapResource;
         Icons["lowbat"] = Application.loadResource( Rez.Drawables.icon_lowbat ) as BitmapResource;
 
         MonoFont = Application.loadResource( Rez.Fonts.MonoFont ) as FontResource;
@@ -108,6 +118,11 @@ class Face1View extends WatchUi.WatchFace {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
 
         for(var i = 0; i < DataOrder.size(); i++) {
+            if( DataOrder[i] == null )
+            {
+                continue;
+            }
+
             var sym0X = DataAnchors[i][0];
             var sym0Y = DataAnchors[i][1];
 
@@ -188,6 +203,10 @@ class Face1View extends WatchUi.WatchFace {
                 return getStepsString();
             case "sun":
                 return getSunString();
+            case "sunrise":
+                return getSunEventString(true);
+            case "sunset":
+                return getSunEventString(false);
             default:
                 return "-";
         }
@@ -242,7 +261,7 @@ class Face1View extends WatchUi.WatchFace {
         var Loc = getLastLocation();
         if( Loc != null )
         {
-            // Sunrsie/Sunset from Loc
+            // Sunrise/Sunset from Loc
             var riseTime = Weather.getSunrise(Loc, Time.now() );
             var setTime = Weather.getSunset(Loc, Time.now() );
 
@@ -253,8 +272,60 @@ class Face1View extends WatchUi.WatchFace {
                 [riseGreg.hour.format("%02d"),
                 riseGreg.min.format("%02d"),
                 setGreg.hour.format("%02d"),
-                setGreg.min.format("%02d")]
-            );
+                setGreg.min.format("%02d")]);
+        }
+
+        return SunString;
+    }
+
+    function getSunEventString(riseEvent as Boolean) {
+        var SunString = "-:-";
+        var Loc = getLastLocation();
+
+        if( Loc != null )
+        {
+            var now = Time.now();
+            var sunToday = riseEvent ? Weather.getSunrise(Loc, now) : Weather.getSunset(Loc, now);
+
+            var sunPrimaryGreg = null;
+            var diffSeconds = 0;
+
+            if( sunToday != null ) {
+                // Sun event today is still ahead
+                // -> Use today's event time and calc diff to yesterday
+                if( sunToday.greaterThan(now) )
+                {
+                    var yesterday = now.subtract(new Time.Duration(Time.Gregorian.SECONDS_PER_DAY));
+                    var sunYesterday = riseEvent ? Weather.getSunrise(Loc, yesterday) : Weather.getSunset(Loc, yesterday);
+                    if( sunYesterday != null )
+                    {
+                        sunPrimaryGreg = Time.Gregorian.info(sunToday, Time.FORMAT_SHORT);
+                        diffSeconds = sunToday.compare(sunYesterday.add(new Time.Duration(Time.Gregorian.SECONDS_PER_DAY)));
+                    }
+                }
+                // Sun event today has already passed
+                // -> Use tomorrow's event time and calc diff to today
+                else
+                {
+                    var tomorrow = now.add(new Time.Duration(Time.Gregorian.SECONDS_PER_DAY));
+                    var sunTomorrow = riseEvent ? Weather.getSunrise(Loc, tomorrow) : Weather.getSunset(Loc, tomorrow);
+                    if( sunTomorrow != null )
+                    {
+                        sunPrimaryGreg = Time.Gregorian.info(sunTomorrow, Time.FORMAT_SHORT);
+                        diffSeconds = sunTomorrow.compare(sunToday.add(new Time.Duration(Time.Gregorian.SECONDS_PER_DAY)));
+                    }
+                }
+
+                if( sunPrimaryGreg != null )
+                {
+                    SunString = Lang.format("$1$:$2$\n$3$$4$:$5$",
+                        [sunPrimaryGreg.hour,
+                        sunPrimaryGreg.min.format("%02d"),
+                        diffSeconds < 0 ? "-" : "+",
+                        (diffSeconds / 60).abs(),
+                        (diffSeconds % 60).abs().format("%02d")]);
+                }
+            }
         }
 
         return SunString;

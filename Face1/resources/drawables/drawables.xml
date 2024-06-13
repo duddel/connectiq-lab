@@ -4,5 +4,7 @@
     <bitmap id="icon_hr" filename="icon_hr.png" />
     <bitmap id="icon_steps" filename="icon_steps.png" />
     <bitmap id="icon_sun" filename="icon_sun.png" />
+    <bitmap id="icon_sunrise" filename="icon_sunrise.png" />
+    <bitmap id="icon_sunset" filename="icon_sunset.png" />
     <bitmap id="icon_lowbat" filename="icon_lowbat.png" />
 </drawables>
