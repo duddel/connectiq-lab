@@ -20,7 +20,8 @@ class Face1View extends WatchUi.WatchFace {
         [195, 305], // Single Data Icon with long text
         [125, 275],
         [265, 275]];
-    const LowBatAnchor = [195, 265];
+    const LowBatAnchor = [195, 320];
+    const PhoneConnectAnchor = [195, 285];
     const DayTextAnchor = [195, 128];
 
     // if true, WeekDays is used to print week day, system default otherwise
@@ -44,7 +45,11 @@ class Face1View extends WatchUi.WatchFace {
         // "sun" => null as BitmapResource,
         "sunrise" => null as BitmapResource,
         "sunset" => null as BitmapResource,
-        "lowbat" => null as BitmapResource};
+        "lowbat" => null as BitmapResource,
+        "phone_0"  => null as BitmapResource,
+        "phone_1"  => null as BitmapResource,
+        "phone_2"  => null as BitmapResource,
+        "phone_3"  => null as BitmapResource};
 
     function initialize() {
         WatchFace.initialize();
@@ -59,6 +64,10 @@ class Face1View extends WatchUi.WatchFace {
         Icons["sunrise"] = Application.loadResource( Rez.Drawables.icon_sunrise ) as BitmapResource;
         Icons["sunset"] = Application.loadResource( Rez.Drawables.icon_sunset ) as BitmapResource;
         Icons["lowbat"] = Application.loadResource( Rez.Drawables.icon_lowbat ) as BitmapResource;
+        Icons["phone_0"] = Application.loadResource( Rez.Drawables.icon_phone_0 ) as BitmapResource;
+        Icons["phone_1"] = Application.loadResource( Rez.Drawables.icon_phone_1 ) as BitmapResource;
+        Icons["phone_2"] = Application.loadResource( Rez.Drawables.icon_phone_2 ) as BitmapResource;
+        Icons["phone_3"] = Application.loadResource( Rez.Drawables.icon_phone_3 ) as BitmapResource;
 
         MonoFont = Application.loadResource( Rez.Fonts.MonoFont ) as FontResource;
         MonoFontLargeNum = Application.loadResource( Rez.Fonts.MonoFontLargeNum ) as FontResource;
@@ -112,6 +121,32 @@ class Face1View extends WatchUi.WatchFace {
             dc.drawBitmap(LowBatAnchor[0] - Icons["lowbat"].getWidth() / 2,
                           LowBatAnchor[1] - Icons["lowbat"].getHeight(),
                           Icons["lowbat"]);
+        }
+
+        // Phone/Notifications icon
+        if( System.getDeviceSettings().phoneConnected )
+        {
+            var PhoneIconName = "";
+
+            switch( System.getDeviceSettings().notificationCount )
+            {
+                case 0:
+                    PhoneIconName = "phone_0";
+                    break;
+                case 1:
+                    PhoneIconName = "phone_1";
+                    break;
+                case 2:
+                    PhoneIconName = "phone_2";
+                    break;
+                default:
+                    PhoneIconName = "phone_3";
+                    break;
+            }
+
+            dc.drawBitmap(PhoneConnectAnchor[0] - Icons[PhoneIconName].getWidth() / 2,
+                          PhoneConnectAnchor[1] - Icons[PhoneIconName].getHeight(),
+                          Icons[PhoneIconName]);
         }
 
         // Data Icons + Text
@@ -228,7 +263,7 @@ class Face1View extends WatchUi.WatchFace {
         if ((Toybox has :SensorHistory) && (Toybox.SensorHistory has :getBodyBatteryHistory)) {
             var BbIter = Toybox.SensorHistory.getBodyBatteryHistory({});
             // Default order of iterator is ORDER_NEWEST_FIRST
-            BodyBatString = Lang.format("$1$%", [BbIter.next().data.toNumber()]);
+            BodyBatString = Lang.format("$1$", [BbIter.next().data.toNumber()]);
         }
 
         return BodyBatString;

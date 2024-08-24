@@ -7,4 +7,8 @@
     <bitmap id="icon_sunrise" filename="icon_sunrise.png" />
     <bitmap id="icon_sunset" filename="icon_sunset.png" />
     <bitmap id="icon_lowbat" filename="icon_lowbat.png" />
+    <bitmap id="icon_phone_0" filename="icon_phone_0.png" />
+    <bitmap id="icon_phone_1" filename="icon_phone_1.png" />
+    <bitmap id="icon_phone_2" filename="icon_phone_2.png" />
+    <bitmap id="icon_phone_3" filename="icon_phone_3.png" />
 </drawables>
