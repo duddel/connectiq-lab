@@ -13,6 +13,7 @@ class Face1View extends WatchUi.WatchFace {
     // Anchors are hard-coded for round watch face with 390x390 pixels
     // Icons are drawn above anchor, Text below anchor
     const DataOrder = [ "hr", "bb", "steps", null, "sunrise", "sunset" ];
+    const DataOrderPhoneConnected = [ "hr", "bb", "steps", null, "sunriseAndSet", "weather" ];
     const DataAnchors = [
         [115, 92],
         [195, 67],
@@ -25,7 +26,7 @@ class Face1View extends WatchUi.WatchFace {
     const DayTextAnchor = [195, 128];
 
     // if true, WeekDays is used to print week day, system default otherwise
-    const OverrideWeekDayString = false;
+    const OverrideWeekDayString = true;
     const WeekDays = {
         1 => "So",
         2 => "Mo",
@@ -152,8 +153,13 @@ class Face1View extends WatchUi.WatchFace {
         // Data Icons + Text
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
 
-        for(var i = 0; i < DataOrder.size(); i++) {
-            if( DataOrder[i] == null )
+        var UsedDataOrder = DataOrder;
+        if( System.getDeviceSettings().phoneConnected ) {
+            UsedDataOrder = DataOrderPhoneConnected;
+        }
+
+        for(var i = 0; i < UsedDataOrder.size(); i++) {
+            if( UsedDataOrder[i] == null )
             {
                 continue;
             }
@@ -161,17 +167,18 @@ class Face1View extends WatchUi.WatchFace {
             var sym0X = DataAnchors[i][0];
             var sym0Y = DataAnchors[i][1];
 
-            if(Icons[DataOrder[i]] != null)
+            var icon = getDataIcon(UsedDataOrder[i]);
+            if( icon != null)
             {
-                dc.drawBitmap(sym0X - Icons[DataOrder[i]].getWidth() / 2,
-                              sym0Y - Icons[DataOrder[i]].getHeight(),
-                              Icons[DataOrder[i]]);
+                dc.drawBitmap(sym0X - icon.getWidth() / 2,
+                              sym0Y - icon.getHeight(),
+                              icon);
             }
 
             dc.drawText(sym0X,
                         sym0Y,
                         MonoFont,
-                        getDataString(DataOrder[i]),
+                        getDataString(UsedDataOrder[i]),
                         Graphics.TEXT_JUSTIFY_CENTER);
         }
     }
@@ -239,11 +246,37 @@ class Face1View extends WatchUi.WatchFace {
             case "sun":
                 return getSunString();
             case "sunrise":
-                return getSunEventString(true);
+                return getSunEventString(true, false);
             case "sunset":
-                return getSunEventString(false);
+                return getSunEventString(false, false);
+            case "sunriseAndSet":
+                return getSunEventStringBoth();
+            case "weather":
+                return getWeatherString();
             default:
                 return "-";
+        }
+    }
+
+    function getDataIcon(id as String) {
+        switch(id)
+        {
+            case "hr":
+                return Icons["hr"];
+            case "bb":
+                return Icons["bb"];
+            case "steps":
+                return Icons["steps"];
+            case "sunrise":
+                return Icons["sunrise"];
+            case "sunset":
+                return Icons["sunset"];
+            case "sunriseAndSet":
+                return Icons["sunrise"];
+            case "weather":
+                return getWeatherIcon();
+            default:
+                return null;
         }
     }
 
@@ -313,7 +346,7 @@ class Face1View extends WatchUi.WatchFace {
         return SunString;
     }
 
-    function getSunEventString(riseEvent as Boolean) {
+    function getSunEventString(riseEvent as Boolean, singleLine as Boolean) {
         var SunString = "-:-";
         var Loc = getLastLocation();
 
@@ -353,16 +386,175 @@ class Face1View extends WatchUi.WatchFace {
 
                 if( sunPrimaryGreg != null )
                 {
-                    SunString = Lang.format("$1$:$2$\n$3$$4$:$5$",
-                        [sunPrimaryGreg.hour,
-                        sunPrimaryGreg.min.format("%02d"),
-                        diffSeconds < 0 ? "-" : "+",
-                        (diffSeconds / 60).abs(),
-                        (diffSeconds % 60).abs().format("%02d")]);
+                    if( singleLine )
+                    {
+                        SunString = Lang.format("$1$:$2$",
+                            [sunPrimaryGreg.hour,
+                            sunPrimaryGreg.min.format("%02d")]);
+                    }
+                    else
+                    {
+                        SunString = Lang.format("$1$:$2$\n$3$$4$:$5$",
+                            [sunPrimaryGreg.hour,
+                            sunPrimaryGreg.min.format("%02d"),
+                            diffSeconds < 0 ? "-" : "+",
+                            (diffSeconds / 60).abs(),
+                            (diffSeconds % 60).abs().format("%02d")]);
+                    }
                 }
             }
         }
 
         return SunString;
+    }
+
+    function getSunEventStringBoth() {
+        var SunString = "-";
+
+        SunString = Lang.format("$1$\n$2$",
+            [getSunEventString(true, true),
+            getSunEventString(false, true)]);
+
+        return SunString;
+    }
+
+    function getWeatherString() {
+        var WeatherString = "-";
+        var Conditions = Weather.getCurrentConditions();
+
+        if( Conditions != null )
+        {
+            // ToDo: Display wind bearing in $2$
+            WeatherString = Lang.format("$1$°C\n$2$$3$",
+                [Math.round(Conditions.temperature).format("%01d"),
+                "Bearing",
+                Math.round(Conditions.windSpeed * 3.6).format("%01d")]);
+        }
+
+        return WeatherString;
+    }
+
+    function getWeatherIcon() {
+        var Condition = Weather.CONDITION_UNKNOWN;
+
+        var Conditions = Weather.getCurrentConditions();
+        if( Conditions != null )
+        {
+            Condition = Conditions.condition;
+        }
+
+        switch(Condition)
+        {
+            case Weather.CONDITION_CLEAR:
+                return null;
+            case Weather.CONDITION_PARTLY_CLOUDY:
+                return null;
+            case Weather.CONDITION_MOSTLY_CLOUDY:
+                return null;
+            case Weather.CONDITION_RAIN:
+                return null;
+            case Weather.CONDITION_SNOW:
+                return null;
+            case Weather.CONDITION_WINDY:
+                return null;
+            case Weather.CONDITION_THUNDERSTORMS:
+                return null;
+            case Weather.CONDITION_WINTRY_MIX:
+                return null;
+            case Weather.CONDITION_FOG:
+                return null;
+            case Weather.CONDITION_HAZY:
+                return null;
+            case Weather.CONDITION_HAIL:
+                return null;
+            case Weather.CONDITION_SCATTERED_SHOWERS:
+                return null;
+            case Weather.CONDITION_SCATTERED_THUNDERSTORMS:
+                return null;
+            case Weather.CONDITION_UNKNOWN_PRECIPITATION:
+                return null;
+            case Weather.CONDITION_LIGHT_RAIN:
+                return null;
+            case Weather.CONDITION_HEAVY_RAIN:
+                return null;
+            case Weather.CONDITION_LIGHT_SNOW:
+                return null;
+            case Weather.CONDITION_HEAVY_SNOW:
+                return null;
+            case Weather.CONDITION_LIGHT_RAIN_SNOW:
+                return null;
+            case Weather.CONDITION_HEAVY_RAIN_SNOW:
+                return null;
+            case Weather.CONDITION_CLOUDY:
+                return null;
+            case Weather.CONDITION_RAIN_SNOW:
+                return null;
+            case Weather.CONDITION_PARTLY_CLEAR:
+                return null;
+            case Weather.CONDITION_MOSTLY_CLEAR:
+                return null;
+            case Weather.CONDITION_LIGHT_SHOWERS:
+                return null;
+            case Weather.CONDITION_SHOWERS:
+                return null;
+            case Weather.CONDITION_HEAVY_SHOWERS:
+                return null;
+            case Weather.CONDITION_CHANCE_OF_SHOWERS:
+                return null;
+            case Weather.CONDITION_CHANCE_OF_THUNDERSTORMS:
+                return null;
+            case Weather.CONDITION_MIST:
+                return null;
+            case Weather.CONDITION_DUST:
+                return null;
+            case Weather.CONDITION_DRIZZLE:
+                return null;
+            case Weather.CONDITION_TORNADO:
+                return null;
+            case Weather.CONDITION_SMOKE:
+                return null;
+            case Weather.CONDITION_ICE:
+                return null;
+            case Weather.CONDITION_SAND:
+                return null;
+            case Weather.CONDITION_SQUALL:
+                return null;
+            case Weather.CONDITION_SANDSTORM:
+                return null;
+            case Weather.CONDITION_VOLCANIC_ASH:
+                return null;
+            case Weather.CONDITION_HAZE:
+                return null;
+            case Weather.CONDITION_FAIR:
+                return null;
+            case Weather.CONDITION_HURRICANE:
+                return null;
+            case Weather.CONDITION_TROPICAL_STORM:
+                return null;
+            case Weather.CONDITION_CHANCE_OF_SNOW:
+                return null;
+            case Weather.CONDITION_CHANCE_OF_RAIN_SNOW:
+                return null;
+            case Weather.CONDITION_CLOUDY_CHANCE_OF_RAIN:
+                return null;
+            case Weather.CONDITION_CLOUDY_CHANCE_OF_SNOW:
+                return null;
+            case Weather.CONDITION_CLOUDY_CHANCE_OF_RAIN_SNOW:
+                return null;
+            case Weather.CONDITION_FLURRIES:
+                return null;
+            case Weather.CONDITION_FREEZING_RAIN:
+                return null;
+            case Weather.CONDITION_SLEET:
+                return null;
+            case Weather.CONDITION_ICE_SNOW:
+                return null;
+            case Weather.CONDITION_THIN_CLOUDS:
+                return null;
+            case Weather.CONDITION_UNKNOWN:
+                return null;
+            default:
+                return null;
+        }
     }
 }
